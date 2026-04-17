@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+{% block title %}Plant Identifier — PlantCare Pro{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.ident-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.ident-card {
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+}
+
+.ident-card h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--forest);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 52px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--mist);
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+    border-color: var(--leaf);
+    background: rgba(78,158,107,0.05);
+}
+
+.drop-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 14px;
+}
+
+.drop-zone h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--forest);
+    margin-bottom: 6px;
+}
+
+.drop-zone p {
+    font-size: 13px;
+    color: var(--text-soft);
+}
+
+.preview-wrap { display: none; }
+
+.preview-img {
+    width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+}
+
+.action-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Result panel */
+.result-panel {
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.loading-state {
+    display: none;
+    text-align: center;
+    padding: 60px 20px;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-state.show {
+    display: flex;
+    animation: fadeIn 0.4s ease;
+}
+
+.loading-state p {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-soft);
+}
+
+.loading-state p + p {
+    font-size: 13px;
+    margin-top: 6px;
+    opacity: 0.7;
+}
+
+.empty-state-ident {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-state-ident .empty-icon { font-size: 52px; margin-bottom: 16px; opacity: 0.6; }
+
+.empty-state-ident h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--forest);
+    margin-bottom: 8px;
+}
+
+.empty-state-ident p { color: var(--text-soft); font-size: 14px; }
+
+.result-wrap {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    animation: fadeIn 0.5s ease;
+}
+
+.result-wrap.show { display: flex; }
+
+.success-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(78,158,107,0.08);
+    border: 1px solid rgba(78,158,107,0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--moss);
+}
+
+.save-toast {
+    display: none;
+    background: rgba(78,158,107,0.1);
+    border: 1px solid rgba(78,158,107,0.3);
+    color: var(--moss);
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    animation: fadeIn 0.3s ease;
+}
+.save-toast.show { display: flex; align-items: center; gap: 8px; }
+
+.result-text {
+    background: var(--mist);
+    border-radius: var(--radius);
+    border-left: 4px solid var(--earth);
+    padding: 24px;
+    max-height: 520px;
+    overflow-y: auto;
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.7;
+    scrollbar-width: thin;
+}
+
+/* Response formatting */
+.response-header {
+    background: linear-gradient(135deg, var(--earth), var(--clay));
+    color: white;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    margin: 20px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.response-header:first-child { margin-top: 0; }
+.header-icon { font-size: 20px; }
+
+.response-subheader {
+    background: rgba(139,111,71,0.08);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 8px 0;
+    border-left: 3px solid var(--earth);
+}
+
+.response-subheader .label { font-weight: 700; color: var(--earth); }
+.response-subheader .value { color: var(--text); margin-left: 6px; }
+
+.response-list { list-style: none; padding: 0; margin: 12px 0; }
+
+.response-bullet {
+    padding: 9px 14px 9px 36px;
+    margin: 6px 0;
+    background: var(--white);
+    border-radius: 8px;
+    border-left: 3px solid var(--clay);
+    position: relative;
+    font-size: 13.5px;
+}
+
+.response-bullet::before {
+    content: '✓';
+    position: absolute;
+    left: 12px;
+    color: var(--clay);
+    font-weight: 700;
+}
+
+.response-numbered {
+    padding: 10px 16px;
+    margin: 8px 0;
+    background: rgba(139,111,71,0.06);
+    border-radius: 8px;
+    border-left: 3px solid var(--earth);
+    font-weight: 600;
+}
+
+.response-content { padding: 6px 0; line-height: 1.75; font-size: 14px; }
+.response-spacer  { height: 12px; }
+
+.err-bar {
+    display: none;
+    background: rgba(220,38,38,0.08);
+    border: 1px solid rgba(220,38,38,0.2);
+    color: #991b1b;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+.err-bar.show { display: flex; align-items: center; gap: 8px; }
+
+@media (max-width: 900px) {
+    .ident-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-hero" style="margin-bottom:32px;background:linear-gradient(135deg,#5a3e2b,var(--earth),var(--clay))">
+    <div class="page-hero-content">
+        <h1>🔍 Plant Identifier</h1>
+        <p>Upload a photo and our AI will identify the species, provide care instructions, toxicity info, and much more.</p>
+    </div>
+</div>
+
+<div class="ident-grid">
+    <!-- Upload -->
+    <div class="ident-card" style="position:sticky;top:88px;">
+        <h2>📷 Upload Plant Image</h2>
+        <div class="drop-zone" id="uploadArea">
+            <span class="drop-icon">🌿</span>
+            <h3>Drop image here or click to upload</h3>
+            <p>JPG, PNG, WEBP · Max 4MB</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+        <div class="preview-wrap" id="previewContainer">
+            <img id="imagePreview" class="preview-img" src="" alt="Plant preview">
+            <div class="action-row">
+                <button class="btn btn-primary btn-lg" id="identifyBtn" style="background:linear-gradient(135deg,var(--earth),var(--clay))">🔍 Identify Plant</button>
+                <button class="btn btn-secondary" id="changeBtn">🔄 Choose Different Image</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="ident-card result-panel">
+        <h2>🌿 Identification Results</h2>
+
+        <div class="loading-state" id="loading">
+            <div class="spinner" style="margin-bottom:20px;border-top-color:var(--earth)"></div>
+            <p id="loadingMsg">Uploading image…</p>
+            <p id="loadingSubMsg">Starting identification</p>
+        </div>
+
+        <div class="result-wrap" id="resultContainer">
+            <div class="success-bar">✅ Identification complete</div>
+            <div class="save-toast" id="saveToast">✅ Saved to your History automatically</div>
+            <div class="result-text" id="resultText"></div>
+        </div>
+
+        <div class="empty-state-ident" id="emptyState">
+            <div class="empty-icon">🔍</div>
+            <h3>No identification yet</h3>
+            <p>Upload a plant photo on the left to identify it</p>
+        </div>
+
+        <div class="err-bar" id="errorMsg">⚠️ <span id="errorText"></span></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const previewContainer = document.getElementById('previewContainer');
+const imagePreview = document.getElementById('imagePreview');
+const identifyBtn = document.getElementById('identifyBtn');
+const changeBtn = document.getElementById('changeBtn');
+const loading = document.getElementById('loading');
+const resultContainer = document.getElementById('resultContainer');
+const resultText = document.getElementById('resultText');
+const emptyState = document.getElementById('emptyState');
+const errorMsg = document.getElementById('errorMsg');
+const errorText = document.getElementById('errorText');
+
+let selectedFile = null;
+let pollingInterval = null;
+let currentJobId = null;
+
+uploadArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+
+function handleFile(file) {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { showError('Image must be under 4MB'); return; }
+    if (!file.type.startsWith('image/')) { showError('Please upload a valid image'); return; }
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+        imagePreview.src = e.target.result;
+        uploadArea.style.display = 'none';
+        previewContainer.style.display = 'block';
+        hideError(); hideResults();
+    };
+    reader.readAsDataURL(file);
+}
+
+changeBtn.addEventListener('click', () => {
+    if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+    if (currentJobId) { fetch(`/api/job/${currentJobId}`, { method: 'DELETE' }).catch(() => {}); currentJobId = null; }
+    uploadArea.style.display = 'block';
+    previewContainer.style.display = 'none';
+    resultContainer.classList.remove('show');
+    emptyState.style.display = 'flex';
+    selectedFile = null; fileInput.value = '';
+    loading.classList.remove('show');
+    identifyBtn.disabled = false;
+    document.getElementById('saveToast').classList.remove('show');
+});
+
+identifyBtn.addEventListener('click', async () => {
+    if (!selectedFile) { showError('Please select an image first'); return; }
+
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+    loading.classList.add('show');
+    emptyState.style.display = 'none';
+    resultContainer.classList.remove('show');
+    hideError();
+    identifyBtn.disabled = true;
+
+    document.getElementById('loadingMsg').textContent = 'Uploading image…';
+    document.getElementById('loadingSubMsg').textContent = 'Starting identification';
+
+    try {
+        const response = await fetch('/api/identify', { method: 'POST', body: formData });
+        const ct = response.headers.get('content-type') || '';
+
+        if (!ct.includes('application/json')) {
+            if (response.status === 401 || response.redirected || response.url.includes('/auth')) {
+                showError('Please log in. Redirecting…');
+                setTimeout(() => { window.location.href = '/auth'; }, 2000);
+            } else {
+                showError('Server error. Please try again.');
+            }
+            loading.classList.remove('show');
+            identifyBtn.disabled = false;
+            return;
+        }
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Server error');
+
+        currentJobId = data.job_id;
+        document.getElementById('loadingMsg').textContent = 'AI is identifying your plant…';
+        document.getElementById('loadingSubMsg').textContent = 'This usually takes 5–15 seconds';
+
+        pollingInterval = setInterval(async () => {
+            try {
+                const pollRes = await fetch(`/api/job/${currentJobId}`);
+                const pollData = await pollRes.json();
+
+                if (pollData.status === 'done') {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                    resultText.innerHTML = pollData.result.formatted_analysis || pollData.result.analysis;
+                    resultContainer.classList.add('show');
+                    loading.classList.remove('show');
+                    identifyBtn.disabled = false;
+
+                    const saveToast = document.getElementById('saveToast');
+                    saveToast.classList.add('show');
+                    setTimeout(() => saveToast.classList.remove('show'), 5000);
+
+                    fetch(`/api/job/${currentJobId}`, { method: 'DELETE' }).catch(() => {});
+                    currentJobId = null;
+
+                } else if (pollData.status === 'error') {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                    loading.classList.remove('show');
+                    identifyBtn.disabled = false;
+                    showError(pollData.error || 'Identification failed.');
+                }
+            } catch (err) {
+                console.warn('Poll error (will retry):', err.message);
+            }
+        }, 3000);
+
+    } catch (e) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        loading.classList.remove('show');
+        identifyBtn.disabled = false;
+        showError(e.message || 'Error starting identification');
+    }
+});
+
+function showError(msg) {
+    errorText.textContent = msg;
+    errorMsg.classList.add('show');
+    setTimeout(hideError, 5000);
+}
+
+function hideError() { errorMsg.classList.remove('show'); }
+function hideResults() { resultContainer.classList.remove('show'); emptyState.style.display = 'flex'; }
+</script>
+{% endblock %}

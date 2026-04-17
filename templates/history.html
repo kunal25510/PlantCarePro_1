@@ -1,0 +1,936 @@
+{% extends "base.html" %}
+{% block title %}Analysis History — PlantCare Pro{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes slideIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+
+/* ── HEADER BAR ── */
+.history-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:28px; gap:16px; flex-wrap:wrap;
+}
+
+.history-header-left h1 {
+    font-family:'Fraunces',serif; font-size:28px; font-weight:800;
+    color:var(--forest); letter-spacing:-0.5px;
+}
+
+.history-header-left p { color:var(--text-soft); font-size:14px; }
+
+/* ── STATS STRIP ── */
+.stats-row {
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:16px; margin-bottom:28px;
+}
+
+.stat-box {
+    background:var(--white); border:1px solid var(--border-light);
+    border-radius:var(--radius); padding:20px; text-align:center;
+    box-shadow:var(--shadow-xs);
+}
+
+.stat-box-val {
+    font-family:'Fraunces',serif; font-size:32px; font-weight:800;
+    color:var(--forest); line-height:1; margin-bottom:6px;
+}
+
+.stat-box-lbl { font-size:12px; color:var(--text-soft); font-weight:500; text-transform:uppercase; letter-spacing:0.3px; }
+
+/* ── FILTER TABS ── */
+.filter-bar {
+    display:flex; gap:8px; margin-bottom:24px; flex-wrap:wrap;
+}
+
+.filter-btn {
+    padding:8px 18px; border-radius:20px; border:1.5px solid var(--border);
+    background:var(--white); color:var(--text-soft); font-size:13px; font-weight:600;
+    cursor:pointer; transition:var(--transition); font-family:'DM Sans',sans-serif;
+}
+
+.filter-btn.active {
+    background:var(--forest); color:white; border-color:var(--forest);
+}
+
+.filter-btn:not(.active):hover { border-color:var(--leaf); color:var(--moss); background:var(--mist); }
+
+/* ── HISTORY ITEMS ── */
+.history-list { display:flex; flex-direction:column; gap:16px; }
+
+.history-card {
+    background:var(--white); border:1px solid var(--border-light);
+    border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-sm);
+    transition:var(--transition); animation:fadeIn 0.4s ease;
+}
+
+.history-card:hover { box-shadow:var(--shadow); border-color:var(--border); }
+
+.history-card-inner {
+    display:grid; grid-template-columns:180px 1fr;
+}
+
+.history-thumb {
+    position:relative; cursor:pointer; overflow:hidden;
+    background:var(--mist);
+}
+
+.history-thumb img {
+    width:100%; height:100%; object-fit:cover;
+    transition:transform 0.4s ease;
+    min-height:160px;
+}
+
+.history-thumb:hover img { transform:scale(1.05); }
+
+.thumb-overlay {
+    position:absolute; inset:0; background:rgba(0,0,0,0.4);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:var(--transition); font-size:24px; color:white;
+}
+
+.history-thumb:hover .thumb-overlay { opacity:1; }
+
+.history-body { padding:22px 24px; display:flex; flex-direction:column; gap:10px; }
+
+.history-body-top {
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+}
+
+.history-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+.type-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:4px 10px; border-radius:20px; font-size:11px;
+    font-weight:700; letter-spacing:0.3px; text-transform:uppercase;
+}
+
+.type-diagnosis     { background:rgba(78,158,107,0.1);  color:var(--moss); }
+.type-identification{ background:rgba(139,111,71,0.1);  color:var(--earth); }
+
+.sev-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;
+}
+
+.sev-high   { background:rgba(220,38,38,0.1);  color:#b91c1c; }
+.sev-medium { background:rgba(240,168,85,0.12); color:#b07220; }
+.sev-low    { background:rgba(78,158,107,0.1);  color:var(--moss); }
+
+.meta-date { font-size:12px; color:var(--text-soft); }
+
+.history-actions { display:flex; gap:8px; flex-shrink:0; }
+
+.icon-btn {
+    width:34px; height:34px; border-radius:8px; border:1.5px solid var(--border);
+    background:var(--white); font-size:14px; cursor:pointer; transition:var(--transition);
+    display:flex; align-items:center; justify-content:center;
+}
+
+.icon-btn:hover { border-color:var(--leaf); background:var(--mist); }
+
+.water-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:8px;
+    background:rgba(107,163,190,0.1); border:1.5px solid rgba(107,163,190,0.3);
+    color:#2e6880; font-size:12px; font-weight:700; text-decoration:none;
+    transition:var(--transition); cursor:pointer;
+}
+
+.water-btn:hover { background:rgba(107,163,190,0.2); border-color:var(--sky); }
+
+.delete-btn:hover { border-color:#fca5a5; background:#fee2e2; }
+
+.history-preview { font-size:13.5px; color:var(--text-soft); line-height:1.65; }
+
+.expand-wrap { display:none; }
+.expand-wrap.open { display:block; animation:fadeIn 0.3s ease; }
+
+.analysis-content {
+    background:var(--mist); border-radius:var(--radius); border-left:3px solid var(--leaf);
+    padding:20px; font-size:13.5px; line-height:1.7; max-height:480px; overflow-y:auto;
+    margin-bottom:12px; scrollbar-width:thin;
+}
+
+/* response formatting (matching backend output) */
+.response-header { background:linear-gradient(135deg,var(--moss),var(--fern)); color:white; padding:10px 14px; border-radius:8px; font-weight:700; font-size:14px; margin:16px 0 10px; display:flex; align-items:center; gap:8px; }
+.response-header:first-child { margin-top:0; }
+.header-icon { font-size:16px; }
+.response-subheader { background:rgba(78,158,107,0.06); padding:8px 12px; border-radius:7px; margin:7px 0; border-left:3px solid var(--leaf); }
+.response-subheader .label { font-weight:700; color:var(--moss); }
+.response-subheader .value { color:var(--text); margin-left:5px; }
+.response-list { list-style:none; padding:0; margin:10px 0; }
+.response-bullet { padding:7px 12px 7px 30px; margin:5px 0; background:var(--white); border-radius:7px; border-left:3px solid var(--sage); position:relative; font-size:13px; }
+.response-bullet::before { content:'✓'; position:absolute; left:10px; color:var(--sage); font-weight:700; }
+.response-numbered { padding:8px 14px; margin:6px 0; background:rgba(107,163,190,0.06); border-radius:7px; border-left:3px solid var(--sky); font-weight:600; }
+.response-content { padding:5px 0; line-height:1.72; font-size:13.5px; }
+.response-spacer { height:10px; }
+
+.expand-btn {
+    font-size:12px; color:var(--moss); background:none; border:none; cursor:pointer;
+    font-weight:600; padding:4px 0; transition:var(--transition); font-family:'DM Sans',sans-serif;
+}
+.expand-btn:hover { color:var(--forest); }
+
+/* ── MODALS ── */
+.modal-backdrop {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.55); z-index:2000;
+    align-items:center; justify-content:center;
+    backdrop-filter:blur(4px);
+}
+
+.modal-backdrop.show { display:flex; animation:fadeIn 0.2s ease; }
+
+.modal-box {
+    background:var(--white); border-radius:var(--radius-xl);
+    padding:36px; max-width:480px; width:90%;
+    box-shadow:var(--shadow-xl); animation:slideIn 0.3s ease;
+}
+
+.modal-box h3 { font-family:'Fraunces',serif; font-size:22px; color:var(--forest); margin-bottom:12px; }
+.modal-box p  { color:var(--text-soft); font-size:14px; line-height:1.65; margin-bottom:24px; }
+.modal-btns   { display:flex; gap:10px; justify-content:flex-end; }
+
+.image-lightbox {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.9); z-index:3000;
+    align-items:center; justify-content:center;
+}
+.image-lightbox.show { display:flex; animation:fadeIn 0.2s ease; }
+
+.lightbox-img { max-width:90%; max-height:90%; border-radius:12px; box-shadow:0 0 40px rgba(0,0,0,0.5); }
+
+.lightbox-close {
+    position:absolute; top:24px; right:24px;
+    background:white; border:none; width:44px; height:44px;
+    border-radius:50%; font-size:20px; font-weight:700; cursor:pointer;
+    transition:var(--transition); display:flex; align-items:center; justify-content:center;
+}
+.lightbox-close:hover { background:#fee2e2; transform:rotate(90deg); }
+
+/* Empty */
+.empty-hist { text-align:center; padding:80px 40px; background:var(--white); border:1px solid var(--border-light); border-radius:var(--radius-xl); }
+.empty-hist-icon { font-size:64px; margin-bottom:20px; opacity:0.5; }
+.empty-hist h3 { font-family:'Fraunces',serif; font-size:24px; color:var(--forest); margin-bottom:10px; }
+.empty-hist p  { color:var(--text-soft); margin-bottom:28px; font-size:15px; }
+
+/* ── HEALTH SCORE BADGE ── */
+.health-score-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:5px 12px; border-radius:20px;
+    font-size:12px; font-weight:700; letter-spacing:0.2px;
+    border: 1.5px solid;
+}
+.score-high   { background:rgba(78,158,107,0.12); color:#1e6b3a; border-color:rgba(78,158,107,0.3); }
+.score-medium { background:rgba(240,168,85,0.12); color:#a05e00; border-color:rgba(240,168,85,0.3); }
+.score-low    { background:rgba(220,38,38,0.1);   color:#991b1b; border-color:rgba(220,38,38,0.25); }
+
+/* ── SORT BANNER ── */
+.sort-banner {
+    background: linear-gradient(135deg, var(--forest), var(--moss));
+    border-radius: var(--radius-lg);
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    animation: fadeIn 0.35s ease;
+    flex-wrap: wrap;
+}
+.sort-banner-text { color: white; font-size: 13.5px; font-weight: 600; }
+.sort-clear-btn {
+    font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 8px; padding: 5px 12px; cursor: pointer;
+    transition: var(--transition); font-family: 'DM Sans', sans-serif;
+}
+.sort-clear-btn:hover { background: rgba(255,255,255,0.22); color: white; }
+
+/* ── SORT BUTTON ── */
+.sort-btn {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:8px 18px; border-radius:20px;
+    background: linear-gradient(135deg, var(--forest), var(--moss));
+    color: white; border: none; font-size:13px; font-weight:700;
+    cursor:pointer; transition:var(--transition);
+    font-family:'DM Sans',sans-serif; box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+}
+.sort-btn:hover { transform:translateY(-2px); box-shadow:var(--shadow); opacity:0.92; }
+.sort-btn.active { background: linear-gradient(135deg, #b07220, #d4892a); }
+.sort-btn .sort-spinner { display:none; width:12px; height:12px; border:2px solid rgba(255,255,255,0.4); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; }
+.sort-btn.loading .sort-spinner { display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── SORT RANK ── */
+.sort-rank {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:50%;
+    background: linear-gradient(135deg, var(--forest), var(--moss));
+    color: white; font-size:11px; font-weight:800; flex-shrink:0;
+}
+
+/* ── KMP SEARCH BAR ── */
+.search-wrap {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 48px 12px 44px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--white);
+    transition: var(--transition);
+    outline: none;
+    box-shadow: var(--shadow-xs);
+    box-sizing: border-box;
+}
+
+.search-input:focus {
+    border-color: var(--leaf);
+    box-shadow: 0 0 0 3px rgba(78,158,107,0.1);
+}
+
+.search-input::placeholder { color: var(--text-soft); opacity: 0.7; }
+
+.search-icon {
+    position: absolute; left: 14px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px; pointer-events: none;
+}
+
+.search-clear {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: var(--border-light); border: none; border-radius: 50%;
+    width: 22px; height: 22px; font-size: 11px; font-weight: 700;
+    cursor: pointer; color: var(--text-soft);
+    display: none; align-items: center; justify-content: center;
+    transition: var(--transition);
+}
+.search-clear.visible { display: flex; }
+.search-clear:hover { background: #fca5a5; color: #991b1b; }
+
+/* Search result info strip */
+.kmp-info {
+    display: none;
+    align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: rgba(78,158,107,0.06);
+    border: 1px solid rgba(78,158,107,0.18);
+    border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text-soft);
+    margin-bottom: 16px;
+    animation: fadeIn 0.2s ease;
+}
+.kmp-info.visible { display: flex; }
+.kmp-count { font-weight: 700; color: var(--forest); font-size: 15px; }
+
+/* highlight matched text inside cards */
+.kmp-highlight {
+    background: rgba(250,204,21,0.45);
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: 700;
+}
+
+/* Loading */
+.hist-loading { background:var(--white); border:1px solid var(--border-light); border-radius:var(--radius-xl); padding:60px 40px; text-align:center; }
+
+@media (max-width:768px) {
+    .history-card-inner { grid-template-columns:1fr; }
+    .history-thumb { height:180px; }
+    .stats-row { grid-template-columns:1fr 1fr 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="history-header">
+    <div class="history-header-left">
+        <h1>📜 Analysis History</h1>
+        <p>All your plant diagnoses and identifications</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="sort-btn" id="sortHealthBtn">
+            <span class="sort-spinner"></span>
+            🌡️ Sort by Health Score
+        </button>
+        <button class="btn btn-danger" id="clearAllBtn">🗑️ Clear All</button>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-box">
+        <div class="stat-box-val" id="totalCount">–</div>
+        <div class="stat-box-lbl">Total Analyses</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-box-val" id="diagnosisCount" style="color:#2d5a3d">–</div>
+        <div class="stat-box-lbl">Diagnoses</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-box-val" id="identificationCount" style="color:var(--earth)">–</div>
+        <div class="stat-box-lbl">Identifications</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All History</button>
+    <button class="filter-btn" data-filter="diagnosis">🔬 Diagnoses</button>
+    <button class="filter-btn" data-filter="identification">🔍 Identifications</button>
+</div>
+
+<!-- Search Bar -->
+<div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input
+        type="text"
+        id="kmpSearchInput"
+        class="search-input"
+        placeholder="Search by condition, type or date"
+        autocomplete="off"
+    >
+    <button class="search-clear" id="searchClearBtn" title="Clear search">✕</button>
+</div>
+<div class="kmp-info" id="kmpInfo">
+    <span>Found <span class="kmp-count" id="kmpCount">0</span> matching records</span>
+</div>
+
+<!-- Sort Banner (shown when sorted view is active) -->
+<div id="sortBanner" style="display:none"></div>
+
+<!-- List -->
+<div id="historyContainer">
+    <div class="hist-loading">
+        <div class="spinner" style="margin:0 auto 16px"></div>
+        <p style="color:var(--text-soft);font-size:15px">Loading history…</p>
+    </div>
+</div>
+
+<!-- Image Lightbox -->
+<div class="image-lightbox" id="imageLightbox">
+    <button class="lightbox-close" id="closeLightbox">✕</button>
+    <img id="lightboxImg" class="lightbox-img" alt="Full size">
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-backdrop" id="deleteModal">
+    <div class="modal-box">
+        <h3 style="color:#b91c1c">🗑️ Delete this entry?</h3>
+        <p>This will permanently remove this analysis from your history. This action cannot be undone.</p>
+        <div class="modal-btns">
+            <button class="btn btn-secondary" id="cancelDelete">Cancel</button>
+            <button class="btn btn-danger" id="confirmDelete">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear All Modal -->
+<div class="modal-backdrop" id="clearAllModal">
+    <div class="modal-box">
+        <h3 style="color:#b91c1c">⚠️ Clear all history?</h3>
+        <p>This will permanently delete every analysis in your history. This action cannot be undone.</p>
+        <div class="modal-btns">
+            <button class="btn btn-secondary" id="cancelClearAll">Cancel</button>
+            <button class="btn btn-danger" id="confirmClearAll">Clear All</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let historyData = [];
+let currentFilter = 'all';
+let itemToDelete = null;
+let isSortedView = false;   // tracks whether Merge Sort view is active
+let kmpQuery     = '';      // current KMP search pattern
+
+// ── String search functions ──────────────────────────────────────────────
+
+/**
+ * computeLPS — build the Longest Prefix Suffix array for `pattern`.
+ */
+function computeLPS(pattern) {
+    const m   = pattern.length;
+    const lps = new Array(m).fill(0); // lps[0] is always 0
+
+    let len = 0; // length of the previous longest prefix-suffix
+    let i   = 1; // start from the second character
+
+    while (i < m) {
+        if (pattern[i] === pattern[len]) {
+            // Characters match → extend the current prefix-suffix length
+            len++;
+            lps[i] = len;
+            i++;
+        } else {
+            if (len !== 0) {
+                // Key step: don't increment i — instead fall back to the
+                // longest prefix-suffix of the prefix we had so far.
+                // This avoids redundant comparisons (the whole point of KMP).
+                len = lps[len - 1];
+            } else {
+                // No prefix-suffix at position i
+                lps[i] = 0;
+                i++;
+            }
+        }
+    }
+    return lps;
+}
+
+/**
+ * kmpSearch — search for `pattern` inside `text`.
+ */
+function kmpSearch(text, pattern) {
+    const n = text.length;
+    const m = pattern.length;
+
+    if (m === 0) return true;  // empty pattern matches everything
+    if (m > n)   return false; // pattern longer than text → impossible
+
+    const lps = computeLPS(pattern); // O(m) preprocessing
+
+    let i = 0; // pointer for text
+    let j = 0; // pointer for pattern
+
+    while (i < n) {                  // O(n) scan — i never goes back
+        if (text[i] === pattern[j]) {
+            i++;
+            j++;
+        }
+
+        if (j === m) {
+            // Full pattern matched!
+            return true;
+            // (to find ALL occurrences, do: j = lps[j-1]; continue;)
+        } else if (i < n && text[i] !== pattern[j]) {
+            // Mismatch after j matches
+            if (j !== 0) {
+                // Use LPS to skip already-matched prefix characters
+                j = lps[j - 1];
+            } else {
+                // No match for pattern[0] at text[i] — advance text
+                i++;
+            }
+        }
+    }
+    return false; // pattern not found
+}
+
+/**
+ * searchPlant — called on every keystroke in the search box.
+ */
+function searchPlant() {
+    const rawQuery = document.getElementById('kmpSearchInput').value;
+    kmpQuery = rawQuery.toLowerCase().trim();
+
+    const clearBtn = document.getElementById('searchClearBtn');
+    const kmpInfo  = document.getElementById('kmpInfo');
+    const kmpCount = document.getElementById('kmpCount');
+
+    // Show/hide the clear ✕ button
+    clearBtn.classList.toggle('visible', kmpQuery.length > 0);
+
+    // No query → show everything, hide the result strip
+    if (!kmpQuery) {
+        kmpInfo.classList.remove('visible');
+        document.querySelectorAll('.plant-item').forEach(card => {
+            card.style.display = '';
+        });
+        return;
+    }
+
+    // Run KMP on every card
+    let matchCount = 0;
+    document.querySelectorAll('.plant-item').forEach(card => {
+        // Build the searchable text for this card from its data attributes
+        const searchableText = (
+            (card.dataset.condition || '') + ' ' +
+            (card.dataset.type      || '') + ' ' +
+            (card.dataset.severity  || '') + ' ' +
+            (card.dataset.date      || '') + ' ' +
+            (card.dataset.analysis  || '')
+        ).toLowerCase();
+
+        const matched = kmpSearch(searchableText, kmpQuery);
+
+        card.style.display = matched ? '' : 'none';
+        if (matched) matchCount++;
+    });
+
+    // Update result info strip
+    kmpInfo.classList.add('visible');
+    kmpCount.textContent = matchCount;
+}
+
+
+// ─── DATA LOADING ────────────────────────────────────────────────────────────
+
+async function loadHistory() {
+    try {
+        const res = await fetch('/api/history');
+        historyData = await res.json();
+        if (!Array.isArray(historyData)) historyData = historyData.history || [];
+        historyData.reverse();
+        updateStats();
+        renderHistory();
+    } catch (e) { console.error('Error loading history:', e); }
+}
+
+// ─── SORT BY HEALTH SCORE ─────────────────────────────────────────────────
+
+async function sortByHealthScore() {
+    const btn = document.getElementById('sortHealthBtn');
+
+    if (isSortedView) {
+        // Toggle off: go back to normal chronological view
+        isSortedView = false;
+        btn.classList.remove('active');
+        btn.innerHTML = '<span class="sort-spinner"></span>🌡️ Sort by Health Score';
+        document.getElementById('sortBanner').style.display = 'none';
+        renderHistory();
+        return;
+    }
+
+    // Show loading state
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="sort-spinner"></span> Sorting…';
+
+    try {
+        const res  = await fetch('/api/sorted_plants');
+        const data = await res.json();
+
+        if (data.error) { alert('Error: ' + data.error); return; }
+
+        isSortedView = true;
+        btn.classList.remove('loading');
+        btn.classList.add('active');
+        btn.innerHTML = '✓ Sorted by Health Score';
+
+        // Show info banner explaining the algorithm
+        const banner = document.getElementById('sortBanner');
+        banner.style.display = 'block';
+        banner.innerHTML = `
+            <div class="sort-banner">
+                <span class="sort-banner-text">
+                    🌡️ ${data.total} plants ranked from <strong>healthiest → weakest</strong>
+                </span>
+                <button class="sort-clear-btn" onclick="sortByHealthScore()">✕ Clear Sort</button>
+            </div>`;
+
+        renderSortedHistory(data.sorted_plants);
+
+    } catch (e) {
+        btn.classList.remove('loading');
+        btn.innerHTML = '<span class="sort-spinner"></span>🌡️ Sort by Health Score';
+        console.error('Sort error:', e);
+        alert('Failed to fetch sorted plants. Please try again.');
+    }
+}
+
+// ─── RENDER: SORTED (with rank + health-score badge) ─────────────────────────
+
+function renderSortedHistory(plants) {
+    const container = document.getElementById('historyContainer');
+
+    if (!plants.length) {
+        container.innerHTML = `
+            <div class="empty-hist">
+                <div class="empty-hist-icon">🌱</div>
+                <h3>No plant records found</h3>
+                <p>Start analyzing plants to build your history</p>
+                <a href="/diagnosis" class="btn btn-primary btn-lg">🔬 Start Diagnosis</a>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = `<div class="history-list">${plants.map((item, idx) => {
+        const date   = new Date(item.timestamp);
+        const dStr   = date.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+        const tStr   = date.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+        const typeCls = item.type === 'diagnosis' ? 'type-diagnosis' : 'type-identification';
+        const typeIcon = item.type === 'diagnosis' ? '🔬' : '🔍';
+        const img    = item.image_path || '/static/placeholder.jpg';
+        const prev   = (item.analysis || '').substring(0, 180) + '…';
+
+        // Severity badge (for diagnosis entries)
+        const sevBadge = item.type === 'diagnosis' && item.severity
+            ? `<span class="sev-badge ${getSevClass(item.severity)}">${item.severity}</span>` : '';
+
+        // Water advisor button
+        const waterBtn = item.type === 'diagnosis'
+            ? `<a href="/weather-watering/${item.id}" class="water-btn">💧 Water Advisor</a>` : '';
+
+        // ── HEALTH SCORE BADGE ─────────────────────────────────────────────
+        // Color-coded by range:  ≥70 green | 40–69 amber | <40 red
+        const score     = item.health_score ?? 70;
+        const scoreCls  = score >= 70 ? 'score-high' : score >= 40 ? 'score-medium' : 'score-low';
+        const scoreIcon = score >= 70 ? '💚' : score >= 40 ? '🟡' : '🔴';
+        const scoreBadge = `<span class="health-score-badge ${scoreCls}">${scoreIcon} ${score}/100</span>`;
+
+        // Rank medal for top 3
+        const medals = ['🥇', '🥈', '🥉'];
+        const rankDisplay = idx < 3
+            ? `<span style="font-size:20px;">${medals[idx]}</span>`
+            : `<span class="sort-rank">#${idx + 1}</span>`;
+
+        return `
+        <div class="history-card plant-item" style="animation-delay:${idx * 0.04}s"
+             data-condition="${(item.condition||'').toLowerCase()}"
+             data-type="${(item.type||'').toLowerCase()}"
+             data-severity="${(item.severity||'').toLowerCase()}"
+             data-date="${dStr.toLowerCase()}"
+             data-analysis="${(item.analysis||'').substring(0,400).toLowerCase()}">
+            <div class="history-card-inner">
+                <div class="history-thumb" onclick="openLightbox('${img}')">
+                    <img src="${img}" alt="Plant" onerror="this.src='/static/placeholder.jpg'">
+                    <div class="thumb-overlay">🔍</div>
+                </div>
+                <div class="history-body">
+                    <div class="history-body-top">
+                        <div class="history-meta" style="align-items:center;gap:8px;">
+                            ${rankDisplay}
+                            <span class="type-badge ${typeCls}">${typeIcon} ${item.type}</span>
+                            ${scoreBadge}
+                            ${sevBadge}
+                            <span class="meta-date">📅 ${dStr} · ${tStr}</span>
+                        </div>
+                        <div class="history-actions">
+                            ${waterBtn}
+                            <button class="icon-btn" onclick="toggleExpand('${item.id}')" title="View Details">👁️</button>
+                            <button class="icon-btn delete-btn" data-id="${item.id}" title="Delete">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="history-preview">${prev}</div>
+                    <div class="expand-wrap" id="expand-${item.id}">
+                        <div class="analysis-content">${item.formatted_analysis || item.analysis}</div>
+                    </div>
+                    <button class="expand-btn" onclick="toggleExpand('${item.id}')" id="expand-btn-${item.id}">
+                        Show Full Analysis ▼
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }).join('')}</div>`;
+
+    // Re-attach delete listeners
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            itemToDelete = btn.dataset.id;
+            document.getElementById('deleteModal').classList.add('show');
+        });
+    });
+
+    // Re-apply any active KMP search query after sorted render
+    if (kmpQuery) searchPlant();
+}
+
+// ─── STATS & NORMAL RENDER ────────────────────────────────────────────────────
+
+function updateStats() {
+    document.getElementById('totalCount').textContent = historyData.length;
+    document.getElementById('diagnosisCount').textContent = historyData.filter(i => i.type === 'diagnosis').length;
+    document.getElementById('identificationCount').textContent = historyData.filter(i => i.type === 'identification').length;
+}
+
+function getSevClass(sev) {
+    if (!sev) return '';
+    const m = { high:'sev-high', medium:'sev-medium', low:'sev-low' };
+    return m[sev.toLowerCase()] || '';
+}
+
+function renderHistory() {
+    const container = document.getElementById('historyContainer');
+    const data = currentFilter === 'all' ? historyData : historyData.filter(i => i.type === currentFilter);
+
+    if (!data.length) {
+        container.innerHTML = `
+            <div class="empty-hist">
+                <div class="empty-hist-icon">📋</div>
+                <h3>No ${currentFilter === 'all' ? '' : currentFilter} history yet</h3>
+                <p>Start analyzing plants to build your history</p>
+                <a href="/diagnosis" class="btn btn-primary btn-lg">🔬 Start Diagnosis</a>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = `<div class="history-list">${data.map((item, idx) => {
+        const date = new Date(item.timestamp);
+        const dStr = date.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+        const tStr = date.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+        const typeCls = item.type === 'diagnosis' ? 'type-diagnosis' : 'type-identification';
+        const typeIcon = item.type === 'diagnosis' ? '🔬' : '🔍';
+        const img = item.image_path || '/static/placeholder.jpg';
+        const prev = (item.analysis || '').substring(0, 180) + '…';
+        const sevBadge = item.type === 'diagnosis' && item.severity
+            ? `<span class="sev-badge ${getSevClass(item.severity)}">${item.severity}</span>` : '';
+        const waterBtn = item.type === 'diagnosis'
+            ? `<a href="/weather-watering/${item.id}" class="water-btn">💧 Water Advisor</a>` : '';
+
+        return `
+        <div class="history-card plant-item"
+             style="animation-delay:${idx*0.05}s"
+             data-condition="${(item.condition||'').toLowerCase()}"
+             data-type="${(item.type||'').toLowerCase()}"
+             data-severity="${(item.severity||'').toLowerCase()}"
+             data-date="${dStr.toLowerCase()}"
+             data-analysis="${(item.analysis||'').substring(0,400).toLowerCase()}">
+            <div class="history-card-inner">
+                <div class="history-thumb" onclick="openLightbox('${img}')">
+                    <img src="${img}" alt="Plant" onerror="this.src='/static/placeholder.jpg'">
+                    <div class="thumb-overlay">🔍</div>
+                </div>
+                <div class="history-body">
+                    <div class="history-body-top">
+                        <div class="history-meta">
+                            <span class="type-badge ${typeCls}">${typeIcon} ${item.type}</span>
+                            ${sevBadge}
+                            <span class="meta-date">📅 ${dStr} · ${tStr}</span>
+                        </div>
+                        <div class="history-actions">
+                            ${waterBtn}
+                            <button class="icon-btn" onclick="toggleExpand('${item.id}')" title="View Details">👁️</button>
+                            <button class="icon-btn delete-btn" data-id="${item.id}" title="Delete">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="history-preview">${prev}</div>
+                    <div class="expand-wrap" id="expand-${item.id}">
+                        <div class="analysis-content">${item.formatted_analysis || item.analysis}</div>
+                    </div>
+                    <button class="expand-btn" onclick="toggleExpand('${item.id}')" id="expand-btn-${item.id}">
+                        Show Full Analysis ▼
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }).join('')}</div>`;
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            itemToDelete = btn.dataset.id;
+            document.getElementById('deleteModal').classList.add('show');
+        });
+    });
+
+    // Re-apply any active KMP search query after re-render
+    if (kmpQuery) searchPlant();
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+function toggleExpand(id) {
+    const wrap = document.getElementById(`expand-${id}`);
+    const btn  = document.getElementById(`expand-btn-${id}`);
+    const open = wrap.classList.contains('open');
+    wrap.classList.toggle('open', !open);
+    btn.textContent = open ? 'Show Full Analysis ▼' : 'Hide Analysis ▲';
+}
+
+function openLightbox(src) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('imageLightbox').classList.add('show');
+}
+
+// ─── EVENT LISTENERS ──────────────────────────────────────────────────────────
+
+// ─── KMP SEARCH EVENT LISTENERS ──────────────────────────────────────────────
+
+// Real-time search on every keystroke — KMP runs on each input event
+document.getElementById('kmpSearchInput').addEventListener('input', searchPlant);
+
+// Clear button resets search and shows all cards
+document.getElementById('searchClearBtn').addEventListener('click', () => {
+    document.getElementById('kmpSearchInput').value = '';
+    searchPlant(); // triggers with empty query → shows all
+    document.getElementById('kmpSearchInput').focus();
+});
+
+// When filter tabs change, re-apply the current KMP query to the new cards
+// (done automatically since searchPlant() reads .plant-item DOM nodes live)
+// ─────────────────────────────────────────────────────────────────────────────
+
+document.getElementById('closeLightbox').addEventListener('click', () => {
+    document.getElementById('imageLightbox').classList.remove('show');
+});
+document.getElementById('imageLightbox').addEventListener('click', e => {
+    if (e.target.id === 'imageLightbox') document.getElementById('imageLightbox').classList.remove('show');
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Clear sorted view when switching filters
+        if (isSortedView) {
+            isSortedView = false;
+            const sortBtn = document.getElementById('sortHealthBtn');
+            sortBtn.classList.remove('active');
+            sortBtn.innerHTML = '<span class="sort-spinner"></span>🌡️ Sort by Health Score';
+            document.getElementById('sortBanner').style.display = 'none';
+        }
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderHistory();
+    });
+});
+
+// Sort button
+document.getElementById('sortHealthBtn').addEventListener('click', sortByHealthScore);
+
+document.getElementById('confirmDelete').addEventListener('click', async () => {
+    if (!itemToDelete) return;
+    try {
+        const res = await fetch(`/api/history/${itemToDelete}`, { method:'DELETE' });
+        if (res.ok) {
+            document.getElementById('deleteModal').classList.remove('show');
+            itemToDelete = null;
+            // Reload and reset sort view after delete
+            isSortedView = false;
+            document.getElementById('sortHealthBtn').classList.remove('active');
+            document.getElementById('sortHealthBtn').innerHTML = '<span class="sort-spinner"></span>🌡️ Sort by Health Score';
+            document.getElementById('sortBanner').style.display = 'none';
+            loadHistory();
+        } else alert('Failed to delete. Please try again.');
+    } catch { alert('Failed to delete. Please try again.'); }
+});
+
+document.getElementById('cancelDelete').addEventListener('click', () => {
+    document.getElementById('deleteModal').classList.remove('show'); itemToDelete = null;
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+    if (historyData.length > 0) document.getElementById('clearAllModal').classList.add('show');
+});
+
+document.getElementById('confirmClearAll').addEventListener('click', async () => {
+    const btn = document.getElementById('confirmClearAll');
+    btn.disabled = true; btn.textContent = 'Clearing…';
+    try {
+        const res = await fetch('/api/history/clear', { method:'DELETE' });
+        if (res.ok) { document.getElementById('clearAllModal').classList.remove('show'); loadHistory(); }
+        else alert('Failed to clear history.');
+    } catch { alert('Failed to clear history.'); }
+    btn.disabled = false; btn.textContent = 'Clear All';
+});
+
+document.getElementById('cancelClearAll').addEventListener('click', () => {
+    document.getElementById('clearAllModal').classList.remove('show');
+});
+
+window.toggleExpand = toggleExpand;
+window.openLightbox = openLightbox;
+
+loadHistory();
+</script>
+{% endblock %}

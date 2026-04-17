@@ -1,0 +1,801 @@
+{% extends "base.html" %}
+{% block title %}Disease Diagnosis — PlantCare Pro{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+    0%   { background-position: -800px 0; }
+    100% { background-position:  800px 0; }
+}
+
+@keyframes floatIcon {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-8px); }
+}
+
+.diagnosis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+/* Upload card */
+.upload-card {
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 88px;
+}
+
+.upload-card h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--forest);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Drop zone */
+.drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 52px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--mist);
+    position: relative;
+    overflow: hidden;
+}
+
+.drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(78,158,107,0.06), transparent);
+    background-size: 800px 100%;
+    animation: shimmer 2.5s infinite;
+}
+
+.drop-zone:hover {
+    border-color: var(--leaf);
+    background: rgba(78,158,107,0.05);
+}
+
+.drop-zone.drag-over {
+    border-color: var(--moss);
+    background: rgba(78,158,107,0.09);
+    transform: scale(1.01);
+}
+
+.drop-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 14px;
+    animation: floatIcon 3s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+}
+
+.drop-zone h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--forest);
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 1;
+}
+
+.drop-zone p {
+    font-size: 13px;
+    color: var(--text-soft);
+    position: relative;
+    z-index: 1;
+}
+
+/* Preview */
+.preview-wrap { display: none; }
+
+.preview-img {
+    width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+}
+
+.action-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Tips */
+.tips-box {
+    margin-top: 22px;
+    background: var(--mist);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    border: 1px solid var(--border-light);
+}
+
+.tips-box h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--moss);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tips-box ul { list-style: none; }
+
+.tips-box li {
+    font-size: 13px;
+    color: var(--text-soft);
+    padding: 5px 0 5px 20px;
+    position: relative;
+    line-height: 1.55;
+}
+
+.tips-box li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--leaf);
+    font-weight: 700;
+}
+
+/* Results card */
+.results-card {
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+    min-height: 480px;
+    display: flex;
+    flex-direction: column;
+}
+
+.results-card h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--forest);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Loading */
+.analyze-loading {
+    display: none;
+    text-align: center;
+    padding: 60px 20px;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.analyze-loading.show {
+    display: flex;
+    animation: fadeIn 0.4s ease;
+}
+
+.analyze-loading p {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-soft);
+}
+
+.analyze-loading p + p {
+    font-size: 13px;
+    margin-top: 6px;
+    color: var(--text-soft);
+    opacity: 0.7;
+}
+
+/* Empty state */
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-icon { font-size: 52px; margin-bottom: 16px; opacity: 0.6; }
+
+.empty h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--forest);
+    margin-bottom: 8px;
+}
+
+.empty p { color: var(--text-soft); font-size: 14px; }
+
+/* Result output */
+.result-wrap {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    animation: fadeIn 0.5s ease;
+}
+
+.result-wrap.show { display: flex; }
+
+.success-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(78,158,107,0.08);
+    border: 1px solid rgba(78,158,107,0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--moss);
+}
+
+.result-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.result-text {
+    background: var(--mist);
+    border-radius: var(--radius);
+    border-left: 4px solid var(--leaf);
+    padding: 24px;
+    max-height: 520px;
+    overflow-y: auto;
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.7;
+    scrollbar-width: thin;
+}
+
+/* Response formatting */
+.response-header {
+    background: linear-gradient(135deg, var(--moss), var(--fern));
+    color: white;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    margin: 20px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow-xs);
+    animation: fadeIn 0.4s ease;
+}
+
+.response-header:first-child { margin-top: 0; }
+
+.header-icon { font-size: 20px; }
+
+.response-subheader {
+    background: rgba(78,158,107,0.06);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 8px 0;
+    border-left: 3px solid var(--leaf);
+    animation: fadeIn 0.4s ease;
+}
+
+.response-subheader .label { font-weight: 700; color: var(--moss); }
+.response-subheader .value { color: var(--text); margin-left: 6px; }
+
+.response-list { list-style: none; padding: 0; margin: 12px 0; }
+
+.response-bullet {
+    padding: 9px 14px 9px 36px;
+    margin: 6px 0;
+    background: var(--white);
+    border-radius: 8px;
+    border-left: 3px solid var(--sky);
+    position: relative;
+    font-size: 13.5px;
+    animation: fadeIn 0.4s ease;
+    box-shadow: var(--shadow-xs);
+    transition: var(--transition);
+}
+
+.response-bullet:hover { transform: translateX(4px); box-shadow: var(--shadow-sm); }
+
+.response-bullet::before {
+    content: '✓';
+    position: absolute;
+    left: 12px;
+    color: var(--sky);
+    font-weight: 700;
+}
+
+.response-numbered {
+    padding: 10px 16px;
+    margin: 8px 0;
+    background: rgba(107,163,190,0.06);
+    border-radius: 8px;
+    border-left: 3px solid var(--sky);
+    font-weight: 600;
+    font-size: 13.5px;
+    animation: fadeIn 0.4s ease;
+}
+
+.response-content { padding: 6px 0; line-height: 1.75; font-size: 14px; animation: fadeIn 0.4s ease; }
+.response-spacer  { height: 12px; }
+
+/* Chat */
+.chat-area {
+    margin-top: 24px;
+    background: var(--mist);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    padding: 20px;
+}
+
+.chat-area-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chat-messages {
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    margin-bottom: 12px;
+    scrollbar-width: thin;
+}
+
+.chat-message {
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+    animation: fadeIn 0.3s ease;
+}
+
+.chat-message.user {
+    background: linear-gradient(135deg, var(--moss), var(--fern));
+    color: white;
+    margin-left: 15%;
+    text-align: right;
+    border-radius: 12px 12px 4px 12px;
+}
+
+.chat-message.bot {
+    background: var(--mist);
+    color: var(--text);
+    margin-right: 15%;
+    border-left: 3px solid var(--leaf);
+    border-radius: 12px 12px 12px 4px;
+}
+
+.typing-indicator { display: none; padding: 10px 14px; }
+.typing-indicator.show { display: flex; align-items: center; gap: 6px; animation: fadeIn 0.2s ease; }
+
+.typing-dots span {
+    width: 7px;
+    height: 7px;
+    background: var(--leaf);
+    border-radius: 50%;
+    display: inline-block;
+    animation: typeBounce 1.3s infinite;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typeBounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-8px); }
+}
+
+.chat-row { display: flex; gap: 10px; }
+
+.chat-row textarea {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    transition: var(--transition);
+    background: var(--white);
+    color: var(--text);
+}
+
+.chat-row textarea:focus {
+    border-color: var(--leaf);
+    box-shadow: 0 0 0 3px rgba(78,158,107,0.1);
+}
+
+.btn-send {
+    background: linear-gradient(135deg, var(--sky), #3a7d9e);
+    color: white;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
+}
+
+.btn-send:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow); }
+.btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Error */
+.err-bar {
+    display: none;
+    background: rgba(220,38,38,0.08);
+    border: 1px solid rgba(220,38,38,0.2);
+    color: #991b1b;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+.err-bar.show { display: flex; align-items: center; gap: 8px; }
+
+/* Save confirmation */
+.save-toast {
+    display: none;
+    background: rgba(78,158,107,0.1);
+    border: 1px solid rgba(78,158,107,0.3);
+    color: var(--moss);
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 10px;
+    animation: fadeIn 0.3s ease;
+}
+.save-toast.show { display: flex; align-items: center; gap: 8px; }
+
+@media (max-width: 900px) {
+    .diagnosis-grid { grid-template-columns: 1fr; }
+    .upload-card { position: static; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-hero" style="margin-bottom:32px">
+    <div class="page-hero-content">
+        <h1>🔬 Plant Disease Diagnosis</h1>
+        <p>Upload a clear photo of your plant to receive an AI-powered diagnosis with detailed treatment recommendations.</p>
+    </div>
+</div>
+
+<div class="diagnosis-grid">
+    <!-- Upload -->
+    <div class="upload-card">
+        <h2>📷 Upload Plant Image</h2>
+
+        <div class="drop-zone" id="uploadArea">
+            <span class="drop-icon">🌿</span>
+            <h3>Drop image here or click to upload</h3>
+            <p>JPG, PNG, WEBP · Max 4MB</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+        <div class="preview-wrap" id="previewContainer">
+            <img id="imagePreview" class="preview-img" src="" alt="Plant preview">
+            <div class="action-row">
+                <button class="btn btn-primary btn-lg" id="analyzeBtn">🔬 Analyze Plant Health</button>
+                <button class="btn btn-secondary" id="changeBtn">🔄 Choose Different Image</button>
+            </div>
+        </div>
+
+        <div class="tips-box">
+            <h4>💡 Tips for best results</h4>
+            <ul>
+                <li>Take clear, well-lit photos of affected areas</li>
+                <li>Include close-ups of symptoms (spots, discoloration)</li>
+                <li>Show both affected and healthy parts if possible</li>
+                <li>Avoid blurry or dark images</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-card">
+        <h2>🌱 Analysis Results</h2>
+
+        <div class="analyze-loading" id="loading">
+            <div class="spinner" style="margin-bottom:20px"></div>
+            <p id="loadingMsg">Uploading image…</p>
+            <p id="loadingSubMsg">Starting analysis</p>
+            <div id="threadBadge" style="display:none;margin-top:14px;padding:8px 16px;background:rgba(78,158,107,0.1);border:1px solid rgba(78,158,107,0.25);border-radius:20px;font-size:12px;font-weight:700;color:var(--moss);">
+                🔄 Analysis running in background — you can navigate freely
+            </div>
+        </div>
+
+        <div class="result-wrap" id="resultContainer">
+            <div class="success-bar">✅ Analysis complete — scroll to read full diagnosis</div>
+            <div class="result-actions" id="resultActions" style="display:none">
+                <a id="waterAdvisorLink" href="#" class="btn btn-primary btn-sm">💧 View in Water Advisor</a>
+            </div>
+            <div class="save-toast" id="saveToast">✅ Saved to your History automatically</div>
+            <div class="result-text" id="resultText"></div>
+
+            <div class="chat-area">
+                <div class="chat-area-label">💬 Ask a follow-up question</div>
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dots"><span></span><span></span><span></span></div>
+                    <span style="font-size:13px;color:var(--text-soft);margin-left:4px">Thinking…</span>
+                </div>
+                <div class="chat-row">
+                    <textarea id="chatInput" placeholder="e.g., How can I treat this naturally?" rows="2"></textarea>
+                    <button class="btn-send" id="sendBtn">📤 Send</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="empty" id="emptyState">
+            <div class="empty-icon">🌿</div>
+            <h3>No analysis yet</h3>
+            <p>Upload a plant image on the left to get started</p>
+        </div>
+
+        <div class="err-bar" id="errorMsg">⚠️ <span id="errorText"></span></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const previewContainer = document.getElementById('previewContainer');
+const imagePreview = document.getElementById('imagePreview');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const changeBtn = document.getElementById('changeBtn');
+const loading = document.getElementById('loading');
+const resultContainer = document.getElementById('resultContainer');
+const resultText = document.getElementById('resultText');
+const emptyState = document.getElementById('emptyState');
+const errorMsg = document.getElementById('errorMsg');
+const errorText = document.getElementById('errorText');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const typingIndicator = document.getElementById('typingIndicator');
+
+let selectedFile = null;
+let currentAnalysis = '';
+
+uploadArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+
+function handleFile(file) {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { showError('Image must be under 4MB'); return; }
+    if (!file.type.startsWith('image/')) { showError('Please upload a valid image'); return; }
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+        imagePreview.src = e.target.result;
+        uploadArea.style.display = 'none';
+        previewContainer.style.display = 'block';
+        hideError(); hideResults();
+    };
+    reader.readAsDataURL(file);
+}
+
+changeBtn.addEventListener('click', () => {
+    if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+    if (currentJobId) {
+        fetch(`/api/job/${currentJobId}`, { method: 'DELETE' }).catch(() => {});
+        currentJobId = null;
+    }
+    uploadArea.style.display = 'block';
+    previewContainer.style.display = 'none';
+    resultContainer.classList.remove('show');
+    emptyState.style.display = 'flex';
+    selectedFile = null; fileInput.value = '';
+    chatMessages.innerHTML = ''; currentAnalysis = '';
+    loading.classList.remove('show');
+    analyzeBtn.disabled = false;
+    document.getElementById('resultActions').style.display = 'none';
+    document.getElementById('saveToast').classList.remove('show');
+});
+
+let pollingInterval = null;
+let currentJobId    = null;
+
+analyzeBtn.addEventListener('click', async () => {
+    if (!selectedFile) { showError('Please select an image first'); return; }
+
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+    loading.classList.add('show');
+    emptyState.style.display = 'none';
+    resultContainer.classList.remove('show');
+    hideError();
+    analyzeBtn.disabled = true;
+
+    document.getElementById('loadingMsg').textContent    = 'Uploading image…';
+    document.getElementById('loadingSubMsg').textContent = 'Starting analysis';
+    document.getElementById('threadBadge').style.display = 'none';
+
+    try {
+        const response = await fetch('/api/analyze', { method: 'POST', body: formData });
+        const ct = response.headers.get('content-type') || '';
+
+        if (!ct.includes('application/json')) {
+            if (response.status === 401 || response.redirected || response.url.includes('/auth')) {
+                showError('Please log in. Redirecting…');
+                setTimeout(() => { window.location.href = '/auth'; }, 2000);
+            } else {
+                showError('Server error. Please try again.');
+            }
+            loading.classList.remove('show');
+            analyzeBtn.disabled = false;
+            return;
+        }
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `Server error: ${response.status}`);
+
+        currentJobId = data.job_id;
+
+        document.getElementById('loadingMsg').textContent    = 'AI is analyzing your plant…';
+        document.getElementById('loadingSubMsg').textContent = 'Running in the background — feel free to navigate away';
+        document.getElementById('threadBadge').style.display = 'block';
+
+        pollingInterval = setInterval(async () => {
+            try {
+                const pollRes  = await fetch(`/api/job/${currentJobId}`);
+                const pollData = await pollRes.json();
+
+                if (pollData.status === 'done') {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+
+                    currentAnalysis = pollData.result.analysis;
+                    typewriterEffect(pollData.result.formatted_analysis || pollData.result.analysis, resultText);
+                    resultContainer.classList.add('show');
+                    loading.classList.remove('show');
+                    analyzeBtn.disabled = false;
+
+                    // Show Water Advisor button
+                    if (pollData.result.doc_id) {
+                        const actionsDiv = document.getElementById('resultActions');
+                        document.getElementById('waterAdvisorLink').href = '/weather-watering/' + pollData.result.doc_id;
+                        actionsDiv.style.display = 'flex';
+                    }
+
+                    // Show save confirmation
+                    const saveToast = document.getElementById('saveToast');
+                    saveToast.classList.add('show');
+                    setTimeout(() => saveToast.classList.remove('show'), 5000);
+
+                    fetch(`/api/job/${currentJobId}`, { method: 'DELETE' }).catch(() => {});
+                    currentJobId = null;
+
+                } else if (pollData.status === 'error') {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                    loading.classList.remove('show');
+                    analyzeBtn.disabled = false;
+                    showError(pollData.error || 'Analysis encountered an error.');
+                }
+            } catch (pollErr) {
+                console.warn('Poll error (will retry):', pollErr.message);
+            }
+        }, 3000);
+
+    } catch (e) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        loading.classList.remove('show');
+        analyzeBtn.disabled = false;
+        showError(e.message || 'Error starting analysis');
+    }
+});
+
+function typewriterEffect(html, el) {
+    el.innerHTML = '';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    let i = 0;
+    function next() {
+        if (i < tmp.children.length) {
+            const c = tmp.children[i].cloneNode(true);
+            c.style.opacity = '0';
+            el.appendChild(c);
+            setTimeout(() => { c.style.transition = 'opacity 0.3s'; c.style.opacity = '1'; }, 10);
+            i++; setTimeout(next, 120);
+        }
+    }
+    next();
+}
+
+sendBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+async function sendMessage() {
+    const q = chatInput.value.trim();
+    if (!q) return; if (!currentAnalysis) { showError('Analyze an image first'); return; }
+    addMsg(q, 'user'); chatInput.value = ''; sendBtn.disabled = true;
+    typingIndicator.classList.add('show');
+    try {
+        const res = await fetch('/api/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: q, analysis: currentAnalysis })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        typingIndicator.classList.remove('show');
+        addMsg(data.formatted_answer || data.answer, 'bot');
+        hideError();
+    } catch (e) {
+        typingIndicator.classList.remove('show');
+        showError(e.message || 'Failed to get answer');
+    } finally { sendBtn.disabled = false; }
+}
+
+function addMsg(msg, type) {
+    const d = document.createElement('div');
+    d.className = `chat-message ${type}`;
+    d.innerHTML = msg;
+    chatMessages.appendChild(d);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showError(msg) {
+    errorText.textContent = msg;
+    errorMsg.classList.add('show');
+    setTimeout(hideError, 5000);
+}
+
+function hideError() { errorMsg.classList.remove('show'); }
+function hideResults() { resultContainer.classList.remove('show'); emptyState.style.display = 'flex'; }
+</script>
+{% endblock %}

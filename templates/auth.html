@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+{% block title %}Login — PlantCare Pro{% endblock %}
+
+{% block extra_css %}
+<style>
+.auth-wrap {
+    min-height: 72vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+}
+
+.auth-layout {
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    gap: 0;
+    width: 100%;
+    max-width: 860px;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border-light);
+}
+
+/* Left panel */
+.auth-side {
+    background: linear-gradient(160deg, var(--forest) 0%, var(--moss) 60%, var(--fern) 100%);
+    padding: 52px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-side::before {
+    content: '🌿';
+    position: absolute;
+    font-size: 180px;
+    opacity: 0.07;
+    bottom: -30px;
+    right: -40px;
+    animation: floatSlow 8s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+.auth-side-top h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 30px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+}
+
+.auth-side-top p {
+    color: rgba(255,255,255,0.7);
+    font-size: 15px;
+    line-height: 1.7;
+    margin-bottom: 32px;
+}
+
+.auth-features { list-style: none; }
+.auth-features li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+.auth-features li::before {
+    content: '✓';
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    color: var(--mint);
+}
+
+/* Right: form panel */
+.auth-form-panel {
+    padding: 52px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.auth-form-panel h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--forest);
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+}
+
+.auth-form-panel .auth-sub {
+    color: var(--text-soft);
+    font-size: 14px;
+    margin-bottom: 32px;
+}
+
+.form-field {
+    margin-bottom: 18px;
+}
+
+.form-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+}
+
+.form-field input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--white);
+    transition: var(--transition);
+    outline: none;
+}
+
+.form-field input:focus {
+    border-color: var(--leaf);
+    box-shadow: 0 0 0 3px rgba(78,158,107,0.1);
+}
+
+.form-field input::placeholder { color: var(--text-soft); opacity: 0.65; }
+
+.form-field input.input-error {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+}
+
+.form-submit {
+    width: 100%;
+    padding: 13px;
+    font-size: 15px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--moss), var(--fern));
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: 'DM Sans', sans-serif;
+    box-shadow: var(--shadow-sm);
+    margin-top: 4px;
+}
+
+.form-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+    background: linear-gradient(135deg, var(--forest), var(--moss));
+}
+
+.form-toggle {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: var(--text-soft);
+}
+
+.form-toggle a {
+    color: var(--moss);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.form-toggle a:hover { color: var(--forest); }
+
+.form-error {
+    background: rgba(220,38,38,0.08);
+    border: 1px solid rgba(220,38,38,0.2);
+    color: #991b1b;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    font-weight: 500;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.client-error {
+    display: none;
+}
+.client-error.show {
+    display: flex;
+}
+
+@media (max-width: 768px) {
+    .auth-layout { grid-template-columns: 1fr; max-width: 440px; }
+    .auth-side { display: none; }
+    .auth-form-panel { padding: 40px 32px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+    <div class="auth-layout">
+        <!-- Left side -->
+        <div class="auth-side">
+            <div class="auth-side-top">
+                <h2>🌿 PlantCare Pro</h2>
+                <p>Join thousands of plant owners who use AI to keep their plants healthy and thriving.</p>
+                <ul class="auth-features">
+                    <li>AI-powered plant disease diagnosis</li>
+                    <li>Smart watering schedule (weather-aware)</li>
+                    <li>Instant plant identification</li>
+                    <li>Personalized care recommendations</li>
+                    <li>Analysis history & tracking</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Right: Login form -->
+        <div class="auth-form-panel">
+            <!-- Login -->
+            <form id="loginForm" method="POST" action="/api/login" novalidate>
+                <h3>Welcome back</h3>
+                <p class="auth-sub">Sign in to access your plant care dashboard</p>
+
+                {% if error %}
+                <div class="form-error">⚠️ {{ error }}</div>
+                {% endif %}
+                <div class="form-error client-error" id="loginClientError">⚠️ <span id="loginClientErrorText"></span></div>
+
+                <div class="form-field">
+                    <label for="loginEmail">Email address</label>
+                    <input type="email" id="loginEmail" name="email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-field">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" name="password" placeholder="Your password" required>
+                </div>
+                <button type="submit" class="form-submit">Sign In →</button>
+                <div class="form-toggle">
+                    No account? <a onclick="toggleForms()">Create one free</a>
+                </div>
+            </form>
+
+            <!-- Sign Up -->
+            <form id="signupForm" method="POST" action="/api/signup" style="display:none" novalidate>
+                <h3>Create account</h3>
+                <p class="auth-sub">Start caring for your plants smarter</p>
+
+                {% if error %}
+                <div class="form-error">⚠️ {{ error }}</div>
+                {% endif %}
+                <div class="form-error client-error" id="signupClientError">⚠️ <span id="signupClientErrorText"></span></div>
+
+                <div class="form-field">
+                    <label>Full Name</label>
+                    <input type="text" id="signupName" name="name" placeholder="Jane Smith" required>
+                </div>
+                <div class="form-field">
+                    <label>Email address</label>
+                    <input type="email" id="signupEmail" name="email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-field">
+                    <label>Password</label>
+                    <input type="password" id="signupPassword" name="password" placeholder="Create a password" required>
+                </div>
+                <div class="form-field">
+                    <label>City (for weather-based watering)</label>
+                    <input type="text" id="signupCity" name="city" placeholder="e.g. Pune, Mumbai">
+                </div>
+                <button type="submit" class="form-submit">Create Account →</button>
+                <div class="form-toggle">
+                    Already have an account? <a onclick="toggleForms()">Sign in</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleForms() {
+    const login = document.getElementById('loginForm');
+    const signup = document.getElementById('signupForm');
+    // Don't reset fields — just toggle visibility
+    if (login.style.display === 'none') {
+        login.style.display = 'block';
+        signup.style.display = 'none';
+    } else {
+        login.style.display = 'none';
+        signup.style.display = 'block';
+    }
+    // Clear client-side errors on toggle
+    document.querySelectorAll('.client-error').forEach(e => e.classList.remove('show'));
+    document.querySelectorAll('.input-error').forEach(e => e.classList.remove('input-error'));
+}
+
+// Client-side validation
+function validateForm(form, errorDiv, errorText) {
+    const inputs = form.querySelectorAll('input[required]');
+    let valid = true;
+    // Clear previous highlights
+    form.querySelectorAll('.input-error').forEach(e => e.classList.remove('input-error'));
+    errorDiv.classList.remove('show');
+
+    inputs.forEach(input => {
+        if (!input.value.trim()) {
+            input.classList.add('input-error');
+            valid = false;
+        }
+        // Email validation
+        if (input.type === 'email' && input.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())) {
+            input.classList.add('input-error');
+            valid = false;
+        }
+    });
+
+    if (!valid) {
+        errorText.textContent = 'Please fill in all required fields correctly.';
+        errorDiv.classList.add('show');
+    }
+    return valid;
+}
+
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    const errDiv = document.getElementById('loginClientError');
+    const errText = document.getElementById('loginClientErrorText');
+    if (!validateForm(this, errDiv, errText)) {
+        e.preventDefault();
+    }
+});
+
+document.getElementById('signupForm').addEventListener('submit', function(e) {
+    const errDiv = document.getElementById('signupClientError');
+    const errText = document.getElementById('signupClientErrorText');
+    if (!validateForm(this, errDiv, errText)) {
+        e.preventDefault();
+    }
+});
+
+// Remove error highlight on input
+document.querySelectorAll('.auth-form-panel input').forEach(input => {
+    input.addEventListener('input', function() {
+        this.classList.remove('input-error');
+    });
+});
+</script>
+{% endblock %}

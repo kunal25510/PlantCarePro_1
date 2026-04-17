@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+{% block title %}Water Advisor — PlantCare Pro{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes slideIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+
+.advisor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.advice-card {
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.advice-card:hover { box-shadow: var(--shadow); }
+
+.advice-card h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--forest);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Weather card */
+.weather-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.weather-box {
+    background: var(--mist);
+    border-radius: var(--radius);
+    padding: 18px;
+    text-align: center;
+    border: 1px solid var(--border-light);
+}
+
+.weather-box-val {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--forest);
+    margin-bottom: 4px;
+}
+
+.weather-box-lbl {
+    font-size: 12px;
+    color: var(--text-soft);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* Recommendation */
+.rec-card {
+    background: linear-gradient(135deg, var(--moss), var(--fern));
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+    color: white;
+}
+
+.rec-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.rec-card p  { font-size: 14px; opacity: 0.85; line-height: 1.7; }
+
+/* Care plan  */
+.care-step {
+    display: flex;
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-light);
+    animation: fadeIn 0.4s ease;
+}
+
+.care-step:last-child { border-bottom: none; }
+
+.care-step-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--mist);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.care-step h4 { font-size: 14px; font-weight: 700; color: var(--forest); margin-bottom: 4px; }
+.care-step p  { font-size: 13px; color: var(--text-soft); line-height: 1.6; }
+
+/* ── CHECKLIST ── */
+.checklist-wrap {
+    margin-top: 0;
+}
+
+.checklist-progress {
+    margin-bottom: 20px;
+    background: var(--mist);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    border: 1px solid var(--border-light);
+}
+
+.checklist-progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.checklist-progress-top span {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-soft);
+}
+
+.checklist-progress-top strong {
+    color: var(--forest);
+    font-size: 15px;
+}
+
+.progress-bar-bg {
+    height: 8px;
+    background: var(--border-light);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--leaf), var(--sage));
+    border-radius: 10px;
+    transition: width 0.45s ease;
+    width: 0%;
+}
+
+/* Checklist item */
+.checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    margin-bottom: 10px;
+    background: var(--white);
+    cursor: pointer;
+    transition: var(--transition);
+    animation: fadeIn 0.35s ease;
+    user-select: none;
+}
+
+.checklist-item:hover { box-shadow: var(--shadow-sm); border-color: var(--border); }
+
+.checklist-item.done {
+    background: rgba(78,158,107,0.04);
+    border-color: rgba(78,158,107,0.25);
+}
+
+.checklist-item.done .cl-title { text-decoration: line-through; color: var(--text-soft); }
+.checklist-item.done .cl-detail { color: var(--text-soft); opacity: 0.6; }
+
+.cl-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: transparent;
+    flex-shrink: 0;
+    transition: var(--transition);
+    margin-top: 2px;
+}
+
+.checklist-item.done .cl-check {
+    background: var(--leaf);
+    border-color: var(--leaf);
+    color: white;
+}
+
+.cl-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.cl-body { flex: 1; }
+.cl-title { font-weight: 600; font-size: 14px; color: var(--forest); margin-bottom: 4px; }
+.cl-detail { font-size: 13px; color: var(--text-soft); line-height: 1.6; }
+.cl-priority {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 10px;
+    margin-top: 6px;
+    display: inline-block;
+}
+
+.cl-priority.high   { background: rgba(220,38,38,0.08);  color: #991b1b; }
+.cl-priority.medium { background: rgba(240,168,85,0.12); color: #b07220; }
+.cl-priority.low    { background: rgba(78,158,107,0.08); color: var(--moss); }
+
+/* Plant info */
+.plant-info-box {
+    background: var(--mist);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    border: 1px solid var(--border-light);
+    margin-bottom: 20px;
+}
+
+.plant-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+}
+
+.plant-info-row span:first-child { font-size: 13px; color: var(--text-soft); }
+.plant-info-row span:last-child  { font-size: 14px; font-weight: 600; color: var(--forest); }
+
+/* Notification */
+.notif-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    animation: fadeIn 0.4s ease;
+}
+
+.notif-urgent  { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.25); color: #991b1b; }
+.notif-warning { background: rgba(240,168,85,0.1);  border: 1px solid rgba(240,168,85,0.3); color: #b07220; }
+
+/* Empty / Loading */
+.advisor-loading {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.advisor-empty {
+    text-align: center;
+    padding: 60px 24px;
+    background: var(--mist);
+    border-radius: var(--radius-lg);
+}
+
+.advisor-empty .empty-icon { font-size: 48px; margin-bottom: 14px; display: block; opacity: 0.5; }
+
+.advisor-empty h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--forest);
+    margin-bottom: 8px;
+}
+
+.advisor-empty p { color: var(--text-soft); font-size: 14px; margin-bottom: 20px; }
+
+.err-bar {
+    display: none;
+    background: rgba(220,38,38,0.08);
+    border: 1px solid rgba(220,38,38,0.2);
+    color: #991b1b;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+.err-bar.show { display: flex; align-items: center; gap: 8px; }
+
+@media (max-width: 900px) {
+    .advisor-grid { grid-template-columns: 1fr; }
+    .weather-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-hero" style="margin-bottom:32px;background:linear-gradient(135deg,#1a3a5a,#2a6090,var(--sky))">
+    <div class="page-hero-content">
+        <h1>💧 Smart Water Advisor</h1>
+        <p>Real-time weather data combined with AI analysis to give you the perfect watering schedule.</p>
+    </div>
+</div>
+
+<div id="advisorContent"></div>
+
+<div class="err-bar" id="errorMsg">⚠️ <span id="errorText"></span></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const historyId = "{{ history_id|default('', true) }}";
+const contentDiv = document.getElementById('advisorContent');
+const errorMsg = document.getElementById('errorMsg');
+const errorText = document.getElementById('errorText');
+
+// ── localStorage checklist persistence ─────────────────────────────────────
+function getChecklistKey() {
+    return historyId ? `checklist_${historyId}` : null;
+}
+
+function loadCheckedItems() {
+    const key = getChecklistKey();
+    if (!key) return {};
+    try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
+}
+
+function saveCheckedItems(checked) {
+    const key = getChecklistKey();
+    if (!key) return;
+    localStorage.setItem(key, JSON.stringify(checked));
+}
+
+// ── Render functions ───────────────────────────────────────────────────────
+
+function renderNoPlant() {
+    contentDiv.innerHTML = `
+        <div class="advice-card">
+            <div class="advisor-empty">
+                <span class="empty-icon">💧</span>
+                <h3>No plant selected</h3>
+                <p>Run a diagnosis first, then click "Water Advisor" in the results to get personalised watering advice.</p>
+                <a href="/diagnosis" class="btn btn-primary">🔬 Start Diagnosis</a>
+            </div>
+        </div>`;
+}
+
+function renderLoading() {
+    contentDiv.innerHTML = `
+        <div class="advice-card">
+            <div class="advisor-loading">
+                <div class="spinner" style="margin:0 auto 16px;border-top-color:var(--sky)"></div>
+                <p style="color:var(--text-soft);font-size:15px">Loading water advice…</p>
+            </div>
+        </div>`;
+}
+
+function renderAdvisorData(data) {
+    const w = data.weather;
+    const r = data.recommendation;
+    const p = data.plant_info;
+    const care = data.care_plan || [];
+    const checklist = data.checklist || [];
+    const notif = data.notification;
+
+    let notifHTML = '';
+    if (notif) {
+        const cls = notif.type === 'urgent' ? 'notif-urgent' : 'notif-warning';
+        notifHTML = `<div class="notif-bar ${cls}">${notif.message}</div>`;
+    }
+
+    const checkedItems = loadCheckedItems();
+    const totalItems = checklist.length;
+    const doneCount = Object.values(checkedItems).filter(v => v).length;
+    const pct = totalItems > 0 ? Math.round((doneCount / totalItems) * 100) : 0;
+
+    contentDiv.innerHTML = `
+    ${notifHTML}
+    <div class="advisor-grid">
+        <!-- Left column -->
+        <div>
+            <!-- Weather -->
+            <div class="advice-card" style="margin-bottom:24px">
+                <h2>🌤️ Current Weather — ${w.city || 'Your City'}</h2>
+                <div class="weather-grid">
+                    <div class="weather-box">
+                        <div class="weather-box-val">${w.temperature}°</div>
+                        <div class="weather-box-lbl">Temperature</div>
+                    </div>
+                    <div class="weather-box">
+                        <div class="weather-box-val">${w.humidity}%</div>
+                        <div class="weather-box-lbl">Humidity</div>
+                    </div>
+                    <div class="weather-box">
+                        <div class="weather-box-val">${w.rain ? '🌧️' : '☀️'}</div>
+                        <div class="weather-box-lbl">${w.rain ? 'Raining' : 'No Rain'}</div>
+                    </div>
+                </div>
+                <p style="font-size:13px;color:var(--text-soft);text-align:center">${w.description}</p>
+            </div>
+
+            <!-- Recommendation -->
+            <div class="advice-card" style="margin-bottom:24px">
+                <h2>${r.icon} Watering Recommendation</h2>
+                <div class="rec-card">
+                    <h3>${r.action}</h3>
+                    <p>${r.description}</p>
+                </div>
+
+                <!-- Plant info -->
+                <div class="plant-info-box">
+                    <div class="plant-info-row"><span>Condition</span> <span>${(p.condition || 'Unknown').replace(/_/g,' ')}</span></div>
+                    <div class="plant-info-row"><span>Severity</span> <span>${p.severity || 'N/A'}</span></div>
+                    <div class="plant-info-row"><span>Diagnosed</span> <span>${new Date(p.timestamp).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span></div>
+                </div>
+            </div>
+
+            <!-- Care plan -->
+            <div class="advice-card">
+                <h2>📋 Today's Care Plan</h2>
+                ${care.map(s => `
+                <div class="care-step">
+                    <div class="care-step-icon">${s.icon}</div>
+                    <div>
+                        <h4>${s.title}</h4>
+                        <p>${s.detail}</p>
+                    </div>
+                </div>`).join('')}
+            </div>
+        </div>
+
+        <!-- Right column: Checklist -->
+        <div>
+            <div class="advice-card checklist-wrap">
+                <h2>✅ Today's Plant Care Checklist</h2>
+
+                <!-- Progress bar -->
+                <div class="checklist-progress">
+                    <div class="checklist-progress-top">
+                        <span>Progress</span>
+                        <strong id="progressLabel">${doneCount}/${totalItems} done (${pct}%)</strong>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progressFill" style="width:${pct}%"></div>
+                    </div>
+                </div>
+
+                <!-- Checklist items -->
+                <div id="checklistContainer">
+                    ${checklist.map((item, idx) => {
+                        const isDone = checkedItems[item.tag] === true;
+                        const priCls = item.priority >= 8 ? 'high' : item.priority >= 5 ? 'medium' : 'low';
+                        const priLabel = item.priority >= 8 ? 'High Priority' : item.priority >= 5 ? 'Medium' : 'Low';
+                        return `
+                    <div class="checklist-item ${isDone ? 'done' : ''}" data-tag="${item.tag}" onclick="toggleChecklistItem(this)">
+                        <div class="cl-check">${isDone ? '✓' : ''}</div>
+                        <span class="cl-icon">${item.icon}</span>
+                        <div class="cl-body">
+                            <div class="cl-title">${item.title}</div>
+                            <div class="cl-detail">${item.detail}</div>
+                            <span class="cl-priority ${priCls}">${priLabel}</span>
+                        </div>
+                    </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ── Toggle checklist item (with localStorage persistence) ─────────────────
+function toggleChecklistItem(el) {
+    const tag = el.dataset.tag;
+    const isDone = el.classList.contains('done');
+
+    el.classList.toggle('done', !isDone);
+    const check = el.querySelector('.cl-check');
+    check.textContent = isDone ? '' : '✓';
+
+    // Persist to localStorage
+    const checked = loadCheckedItems();
+    checked[tag] = !isDone;
+    saveCheckedItems(checked);
+
+    // Update progress bar
+    updateProgress();
+}
+
+function updateProgress() {
+    const items = document.querySelectorAll('.checklist-item');
+    const total = items.length;
+    const done = document.querySelectorAll('.checklist-item.done').length;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    document.getElementById('progressLabel').textContent = `${done}/${total} done (${pct}%)`;
+    document.getElementById('progressFill').style.width = pct + '%';
+}
+
+// Make function global
+window.toggleChecklistItem = toggleChecklistItem;
+
+// ── Auto-fetch data ───────────────────────────────────────────────────────
+async function loadAdvisor() {
+    if (!historyId) { renderNoPlant(); return; }
+
+    renderLoading();
+
+    try {
+        const res = await fetch(`/api/water-advisor/${historyId}`);
+        const ct = res.headers.get('content-type') || '';
+
+        if (!ct.includes('application/json')) {
+            if (res.status === 401 || res.redirected || res.url.includes('/auth')) {
+                showError('Please log in. Redirecting…');
+                setTimeout(() => { window.location.href = '/auth'; }, 2000);
+            } else {
+                showError('Server error. Please try again.');
+            }
+            return;
+        }
+
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || 'Failed to load');
+
+        renderAdvisorData(data);
+
+    } catch (e) {
+        contentDiv.innerHTML = '';
+        showError(e.message || 'Failed to load water advice');
+    }
+}
+
+function showError(msg) {
+    errorText.textContent = msg;
+    errorMsg.classList.add('show');
+}
+
+loadAdvisor();
+</script>
+{% endblock %}
